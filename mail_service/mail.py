@@ -28,7 +28,7 @@ def main(box):
 
 if __name__ == '__main__':
 	import os
-	print("PID: {0}\nIf you can't quite, run 'kill {0}'\n".format(os.getpid()))
+	print(f"PID: {os.getpid()}\nIf you can't quite, run 'kill {os.getpid()}'\n")
 	try:
 		box = mailbox()
 		main(box)
