@@ -74,6 +74,11 @@ class database:
 		res = self.curr.execute(sql,[user_id, service_name])
 		return res.fetchall()
 
+	def getAllUserPasswords(self, user_id):
+		sql = "SELECT service, password FROM Services WHERE user_id=(?);"
+		res = self.curr.execute(sql,[user_id])
+		return res.fetchall()	
+
 	def removeUserServicePassword(self, user_id, service_name):
 		"""
 		Removes specified service password from db
@@ -108,60 +113,22 @@ class database:
 		res = self.curr.execute(sql,[user_id])
 		return res.fetchall()
 
-	def removeMailbox(self, user_id, mailbox_id):
+	def removeMailbox(self, user_id):
 		"""
 		Removes mailbox from db 
 		
 		"""
-		sql = "DELETE FROM Mailboxes WHERE user_id=(?) and mailbox_id=(?);"
-		res = self.curr.execute(sql,[user_id, mailbox_id])
+		sql = "DELETE FROM Mailboxes WHERE user_id=(?);"
+		res = self.curr.execute(sql,[user_id])
 		self.conn.commit()
 
+def main():
+	db = database(r"sql_lib\test_db.db")
 
-def main_bad():
-	#database = database(r"sql_lib\test_db.db")
-	a=1
-	i=0
-	while a != 0 and i < 10:
-		i+=1
-		#data = database.getUserData(i)
-		data = ("eacdty","qqqeeddttydy")
-		for entry in data:
-			e_list = []
-			for letter in entry:
-				if letter == "e":
-					e_list.append("a")
-				elif letter == "a":
-					e_list.append("e")
-				elif letter == "c":
-					e_list.append("y")
-				elif letter == "d":
-					e_list.append("t")
-				elif letter == "t":
-					e_list.append("d")
-				elif letter == "y":
-					e_list.append("c")
-				else: letter=""
-			res = "".join(e_list)
-			print(res, i)
-	#database.disconnect()
+	print(db.getMailboxData("281048238"))
 
-def main_good():
-	#database = database(r"sql_lib\test_db.db")
-	a=1
-	i=0
-	while a != 0 and i < 10:
-		i+=1
-		#data = database.getUserData(i)
-		data = ("eacdty","qqqeeddttydy")
-		repl_array = {"e":"a", "a":"e","c":"y","d":"t","t":"d","y":"c"}
-		for entry in data:
-			res = "".join([repl_array[letter] for letter in list(entry) if letter in repl_array])
-			print(res, i)
-				
-	#database.disconnect()		
+	db.disconnect()		
 		
 if __name__ == "__main__":
-	main_good()
-	print("________________")
-	main_bad()
+	main()
+	pass

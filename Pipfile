@@ -7,8 +7,15 @@ name = "pypi"
 flask = "*"
 radon = "*"
 python-telegram-bot = "*"
+pytest = "*"
+coverage = "*"
+pytest-cov = "*"
+gql = {extras = ["all"], version = "*"}
 
 [dev-packages]
 
 [requires]
 python_version = "3.9"
+
+[pipenv]
+allow_prereleases = true

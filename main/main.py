@@ -8,8 +8,10 @@ import collections
 from telegram.ext import Filters
 from telegram.ext import MessageHandler
 from telegram.ext import Updater
+from telegram import ReplyKeyboardMarkup
 from sql_lib.postgresql import database
-
+from mail_service.dropmail import mail_handler
+from datetime import datetime as dt, timedelta
 
 token = "2129777308:AAG-d5t3jdTbKapQqHHfEmPgFiamh7I1WDY"
 host = "somerandomserver.xyz"
@@ -33,6 +35,8 @@ class MailBot(object):
         self.handlers_map = {"mailbox": collections.defaultdict(self.mail_dialog),
                         "password": collections.defaultdict(self.password_dialog),} # заводим мапу "id чата -> генератор"
         self.db = database(r"sql_lib\test_db.db")
+        custom_keyboard = [['/password', '/all_passwords', '/new_mailbox', '/check_mail']]
+        self.reply_markup = ReplyKeyboardMarkup(custom_keyboard)
 
     def start(self):
         self.updater.start_polling()
@@ -48,7 +52,10 @@ class MailBot(object):
             
             if not self.db.doesUserExist(chat_id):
                 self.db.writeNewUserData(chat_id, update.message.chat.first_name, update.message.chat.last_name)
-            answer = "Добавить сюда инструкцию" #TODO Instruction
+            answer = """Вы можете создать временный почтовый ящик через /new_mailbox \n
+            Проверить активный почтовый ящик через /check_mail\n
+            Создать новый пароль можно через /password\n
+            Показать все сохраненные пароли /all_passwords """ #TODO Instruction
         for handlers in self.handlers_map.values():
             if chat_id in handlers:
                 print(chat_id)
@@ -63,16 +70,41 @@ class MailBot(object):
                     return self.handle_message(update, context)
 
         if update.message.text == "/new_mailbox":
-            #create new mailbox
+            self.db.removeMailbox(chat_id)
+            mail = mail_handler(chat_id)
+            mailbox_data = mail.new_mailbox()
+            mailbox_name = mailbox_data["introduceSession"]["addresses"][0]["address"]
+            self.db.writeNewMailboxData(
+                chat_id,
+                mailbox_data["introduceSession"]["id"],
+                mailbox_name)
             #send mail data to user
-            mailbox = "test@test.test"
-            answer = f"Почтовый ящик: {mailbox}" 
+            answer = f"Почтовый ящик: {mailbox_name}, истекает {dt.now().__add__(timedelta(minutes=10)).strftime('%H:%M:%S %Y-%m-%d')}" 
 
+        if update.message.text == "/check_mail":
+            mailbox = self.db.getMailboxData(chat_id)
+            mail = mail_handler(chat_id, mailbox[0][1])
+            mail_letters = mail.get_mail() 
+            letters = []
+            if mail_letters["session"] :
+                if mail_letters['session']['mails']:
+                    for letter in mail_letters["session"]["mails"]:
+                        letter_formatted = f"От: {letter['fromAddr']} \n \nТема: {letter['headerSubject']} \n{letter['text']}"
+                        letters.append(letter_formatted) 
+                    answer = letters 
+                else: answer = "Почтовый ящик пуст"
+            else: answer = "Почтовый ящик пуст"
 
         elif update.message.text == "/password":
             answer = next(self.handlers_map["password"][chat_id])
-
-        context.bot.sendMessage(chat_id=chat_id, text=answer)
+        
+        elif update.message.text == "/all_passwords":
+            answer = "\n".join([" : ".join([elem[0],elem[1]]) for elem in self.db.getAllUserPasswords(chat_id)])
+            
+        if type(answer) is list:
+            for elem in answer:
+                context.bot.sendMessage(chat_id=chat_id, text=elem, reply_markup=self.reply_markup)
+        else: context.bot.sendMessage(chat_id=chat_id, text=answer, reply_markup=self.reply_markup) 
 
     def password_dialog(self):
         answer = yield "Укажите идентификатор пароля"
@@ -82,10 +114,7 @@ class MailBot(object):
         self.db.writeUserServiceData(answer.chat_id, service, password)
         answer = yield f"{service} : {password}"
 
-    def mail_dialog(self):
-        answer = yield "MAIL Здравствуйте! Меня забыли наградить именем, а как зовут вас?"
-        name = answer.text.rstrip(".!").split()[0].capitalize()
-        answer = yield f"MAIL Приятно познакомиться, {name}. Вам нравится Питон?"
+    def mail_dialog(self): pass
 
 if __name__=="__main__":
     mail_bot = MailBot(token)
